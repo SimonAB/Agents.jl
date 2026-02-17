@@ -89,15 +89,15 @@ function __init__()
     update_name = "update_v$(version_number)"
     update_message = """
     Update message: Agents v$(version_number)
-    
+
     This is a new major version of Agents.jl with lots of cool stuff!
     However, from this version onwards, we will stop posting update messages
     to the REPL console!
-    
+
     If you want to be updated, follow this discourse post:
-    
+
     https://discourse.julialang.org/t/agents-jl-v6-releases-announcement-post/111678
-    
+
     (and see the CHANGELOG.md file online for a list of changes!)
     """
     if display_update
