@@ -128,7 +128,7 @@ All `kwargs` are propagated to
 You can use [`plan_route!`](@ref) or [`plan_random_route!`](@ref).
 To actually move along a planned route use [`move_along_route!`](@ref).
 """
-struct OpenStreetMapSpace <: Agents.AbstractSpace
+struct OpenStreetMapSpace <: Agents.OpenStreetMapSpace
     map::OSMGraph
     s::Vector{Vector{Int}}
     routes::Dict{Int,OpenStreetMapPath} # maps agent ID to corresponding path
@@ -232,7 +232,7 @@ keywords are passed to
 Return `true` if a path to `dest` exists, and hence the route planning was successful.
 Otherwise return `false`. When `dest` is an invalid position, i.e. if it contains node
 indices that are not in the graph, or if the distance along the road is not between zero and
-the length of the road, return `false` as well. 
+the length of the road, return `false` as well.
 
 Specifying `return_trip = true` also requires the existence of a return path for a route to
 be planned.
@@ -996,8 +996,8 @@ ids_on_road(pos_1::Int, pos_2::Int, model::ABM{<:OpenStreetMapSpace}) =
     ))
 
 function Agents.nearby_positions(
-        pos::Tuple{Int,Int,Float64}, 
-        model::ABM{<:OpenStreetMapSpace}, 
+        pos::Tuple{Int,Int,Float64},
+        model::ABM{<:OpenStreetMapSpace},
         args::Vararg{Any, N}; kwargs...
     ) where {N}
     nearby_positions(pos[1], model, args...; kwargs...)
@@ -1021,9 +1021,8 @@ function Agents.nearby_positions(
     Int.(neighborfn(abmspace(model).map.graph, position))
 end
 
-end # module OSM
+# Register JLD2 serialization when OSM is loaded (LightOSM optional dependency)
+AgentsIO.to_serializable(t::OpenStreetMapSpace) =
+    AgentsIO.SerializableOSMSpace([(k, v) for (k, v) in t.routes])
 
-# These are for aliasing the in-module names, and exporting them at top level
-const OpenStreetMapSpace = OSM.OpenStreetMapSpace
-const OSMSpace = OSM.OpenStreetMapSpace
-const OSMAgent = OSM.OSMAgent
+end # module OSM

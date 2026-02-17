@@ -71,7 +71,7 @@ struct SerializableGraphSpace{G}
     graph::G
 end
 struct SerializableOSMSpace
-    routes::Vector{Tuple{Int,OSM.OpenStreetMapPath}}
+    routes::Vector{Tuple{Int,Any}}  # Any = OSM.OpenStreetMapPath when OSM is loaded
 end
 
 struct SerializableAStar{D,P,M,T,C}
@@ -107,7 +107,7 @@ to_serializable(t::ContinuousSpace{D,P,T}) where {D,P,T} =
 
 to_serializable(t::GraphSpace{G}) where {G} = SerializableGraphSpace{G}(t.graph)
 
-to_serializable(t::OSM.OpenStreetMapSpace) = SerializableOSMSpace([(k, v) for (k, v) in t.routes])
+# to_serializable(::OSM.OpenStreetMapSpace) defined in spaces/openstreetmap.jl when LightOSM is loaded
 
 JLD2.wconvert(::Type{SerializableAStar{D,P,M,T,C}}, t::Pathfinding.AStar{D,P,M,T,C}) where {D,P,M,T,C} =
     SerializableAStar{D,P,M,T,C}(
@@ -174,6 +174,9 @@ end
 from_serializable(t::SerializableGraphSpace; kwargs...) = GraphSpace(t.graph)
 
 function from_serializable(t::SerializableOSMSpace; kwargs...)
+    if !isdefined(Agents, :OSM)
+        error("Restoring OpenStreetMapSpace checkpoints requires LightOSM. Add LightOSM to your project and run: using LightOSM")
+    end
     @assert haskey(kwargs, :map) "Path to OpenStreetMap not provided"
 
     space = OSM.OpenStreetMapSpace(
