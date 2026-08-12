@@ -36,7 +36,7 @@ using Agents
 # simulation. The `Particle` type, for the `ContinuousAgent{2,Float64}` space, will have additionally
 # an `id` and `pos` (position) and `vel` (velocity) fields, which are automatically added
 # by the `@agent` macro.
-@agent struct Particle(ContinuousAgent{2,Float64})
+@agent struct Particle(ContinuousAgent{2, Float64})
     r::Float64 # radius
     k::Float64 # repulsion force constant
     mass::Float64
@@ -45,7 +45,7 @@ PropParticle(; vel, r, k, mass) = (vel, r, k, mass)
 
 # ## Required and data structures for CellListMap.jl
 #
-# We will use the high-level `ParticleSystem` interface (requires version ≥0.9.0):
+# We will use the high-level `ParticleSystem` interface (requires version ≥0.10):
 using CellListMap
 
 # Two auxiliary arrays will be created on model initialization, to be passed to
@@ -61,55 +61,55 @@ using CellListMap
 #
 # Additionally, the computation with `CellListMap.jl` requires the definition of a `cutoff`,
 # which will be twice the maximum interacting radii of the particles, and the geometry of the
-# the system, given by the `unitcell` of the periodic box. For non-periodic systems, 
-# use `unitcell = nothing`. 
+# the system, given by the `unitcell` of the periodic box. For non-periodic systems,
+# use `unitcell = nothing`.
 #
 # More complex output data, variable system geometries and other options are supported,
-# according to the [CellListMap](https://m3g.github.io/CellListMap.jl/stable/ParticleSystem/)
-# user guide.
+# according to the [CellListMap](https://m3g.github.io/CellListMap.jl/) user guide.
 #
 # ## Model initialization
 # We create the model with a keyword-accepting function as is recommended in Agents.jl.
 # The keywords here control number of particles and sizes.
 function initialize_bouncing(;
-    number_of_particles=10_000,
-    sides=SVector(500.0, 500.0),
-    dt=0.001,
-    max_radius=10.0,
-    parallel=true
-)
+        number_of_particles = 10_000,
+        sides = SVector(500.0, 500.0),
+        dt = 0.001,
+        max_radius = 10.0,
+        parallel = true
+    )
     ## initial random positions
-    positions = [sides .* rand(SVector{2,Float64}) for _ in 1:number_of_particles]
+    positions = [sides .* rand(SVector{2, Float64}) for _ in 1:number_of_particles]
 
     ## We will use CellListMap to compute forces, with similar structure as the positions
     forces = similar(positions)
 
     ## Space and agents
-    space2d = ContinuousSpace(sides; periodic=true)
+    space2d = ContinuousSpace(sides; periodic = true)
 
     ## Initialize CellListMap particle system
     system = ParticleSystem(
-        positions=positions,
-        unitcell=sides,
-        cutoff=2 * max_radius,
-        output=forces,
-        output_name=:forces, # allows the system.forces alias for clarity
-        parallel=parallel,
+        positions = positions,
+        unitcell = sides,
+        cutoff = 2 * max_radius,
+        output = forces,
+        output_name = :forces, # allows the system.forces alias for clarity
+        parallel = parallel,
     )
 
     ## define the model properties
     ## The system field contains the data required for CellListMap.jl
     properties = (
-        dt=dt,
-        number_of_particles=number_of_particles,
-        system=system,
+        dt = dt,
+        number_of_particles = number_of_particles,
+        system = system,
     )
-    model = StandardABM(Particle,
+    model = StandardABM(
+        Particle,
         space2d;
         agent_step!,
         model_step!,
         agents_first = false,
-        properties=properties
+        properties = properties
     )
 
     ## Create active agents
@@ -130,10 +130,9 @@ end
 # ## Computing the pairwise particle forces
 # To follow the `CellListMap` interface, we first need a function that
 # computes the force between a single pair of particles. This function
-# receives the positions of the two particles (already considering
-# the periodic boundary conditions), `x` and `y`, their indices in the
-# array of positions, `i` and `j`, the squared distance between them, `d2`,
-# the `forces` array to be updated and the `model` properties.
+# receives a `CellListMap.NeighborPair` object, which carries the
+# positions (already wrapped according to periodic boundaries, if available),
+# the indices and the distance between the particles.
 #
 # Given these input parameters, the function obtains the properties of
 # each particle from the model, and computes the force between the particles
@@ -141,7 +140,8 @@ end
 #
 # The function *must* return the `forces` array, to follow the `CellListMap` API.
 #
-function calc_forces!(x, y, i, j, d2, forces, model)
+function calc_forces!(pair, forces, model)
+    (; x, y, i, j, d2) = pair
     p_i = model[i]
     p_j = model[j]
     d = sqrt(d2)
@@ -161,8 +161,8 @@ end
 #
 function model_step!(model::ABM)
     ## Update the pairwise forces at this step
-    map_pairwise!(
-        (x, y, i, j, d2, forces) -> calc_forces!(x, y, i, j, d2, forces, model),
+    pairwise!(
+        (pair, forces) -> calc_forces!(pair, forces, model),
         model.system,
     )
     return nothing
@@ -185,18 +185,18 @@ function agent_step!(agent, model::ABM)
     x = normalize_position(x, model)
     agent.vel = v
     move_agent!(agent, x, model)
-    ## !!! IMPORTANT: Update positions in the ParticleSystem
+    ## !!! IMPORTANT: Update positions in the CellListMap.ParticleSystem
     model.system.positions[id] = agent.pos
     return nothing
 end
 
 # ## The simulation
 # Finally, the function below runs an example simulation, for 1000 steps.
-function simulate(model=nothing; nsteps=1_000, number_of_particles=10_000)
+function simulate(model = nothing; nsteps = 1_000, number_of_particles = 10_000)
     if isnothing(model)
-        model = initialize_bouncing(number_of_particles=number_of_particles)
+        model = initialize_bouncing(number_of_particles = number_of_particles)
     end
-    Agents.step!(model, nsteps)
+    return Agents.step!(model, nsteps)
 end
 # Which should be quite fast
 model = initialize_bouncing()
@@ -209,15 +209,14 @@ model = initialize_bouncing()
 
 using CairoMakie
 CairoMakie.activate!() # hide
-model = initialize_bouncing(number_of_particles=1000)
+model = initialize_bouncing(number_of_particles = 1000)
 abmvideo(
     "celllistmap.mp4", model;
-    framerate=20, frames=200, dt=5,
-    title="Softly Bouncing Particles with CellListMap.jl",
-    agent_size=p -> p.r,
-    agent_color=p -> p.k,
-    figure=(size=(1280, 720),),
-    title_kwargs=(fontsize=18,),
+    framerate = 20, frames = 200, dt = 5,
+    title = "Softly Bouncing Particles with CellListMap.jl",
+    agent_size = p -> p.r,
+    agent_color = p -> p.k,
+    figure = (size = (1280, 720),),
 )
 
 # ```@raw html

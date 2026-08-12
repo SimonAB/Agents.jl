@@ -17,7 +17,6 @@ using LightSumTypes
 export variant, variantof
 import ProgressMeter
 using Random
-using Requires
 using StaticArrays: SVector, SizedVector
 export SVector
 import LinearAlgebra
@@ -48,8 +47,7 @@ include("spaces/grid_multi.jl")
 include("spaces/grid_single.jl")
 include("spaces/discrete.jl")
 include("spaces/continuous.jl")
-# OpenStreetMapSpace stub when LightOSM is not loaded; concrete type in OSM when LightOSM is loaded
-abstract type OpenStreetMapSpace <: AbstractSpace end
+include("spaces/openstreetmap.jl")
 include("spaces/utilities.jl")
 include("spaces/walk.jl")
 
@@ -76,38 +74,5 @@ include("visualizations.jl")
 include("ambiguities.jl")
 
 include("precompile.jl")
-
-# Update messages:
-using Scratch
-
-function __init__()
-    @require LightOSM = "d1922b25-af4e-4ba3-84af-fe9bea896051" include(
-        joinpath(@__DIR__, "spaces", "openstreetmap.jl"),
-    )
-    display_update = true
-    version_number = "6"
-    update_name = "update_v$(version_number)"
-    update_message = """
-    Update message: Agents v$(version_number)
-
-    This is a new major version of Agents.jl with lots of cool stuff!
-    However, from this version onwards, we will stop posting update messages
-    to the REPL console!
-
-    If you want to be updated, follow this discourse post:
-
-    https://discourse.julialang.org/t/agents-jl-v6-releases-announcement-post/111678
-
-    (and see the CHANGELOG.md file online for a list of changes!)
-    """
-    if display_update
-        # Get scratch space for this package
-        versions_dir = @get_scratch!("versions")
-        if !isfile(joinpath(versions_dir, update_name))
-            printstyled(stdout, "\n" * update_message; color=:light_magenta)
-            touch(joinpath(versions_dir, update_name))
-        end
-    end
-end # _init__ function.
 
 end # module
